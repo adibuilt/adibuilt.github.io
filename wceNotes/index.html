@@ -35,15 +35,20 @@
                 </a>
 
                 &nbsp;·&nbsp;
-                
+
                 <a href="https://github.com/adibuilt/wceNotes/tree/main/8BS105-LAC"
                    target="_blank"
                    rel="noopener noreferrer">
                     Source
                 </a>
+                
+                &nbsp;·&nbsp;
 
-                <p>Found this useful?</p>
-                <button type="button">Thanks · 0</button>
+                <!-- <p>Found this useful?</p> -->
+                <button type="button" data-course="lac">
+                    Thanks · <span id="lac-count">…</span>
+                </button>
+                <span id="lac-status" aria-live="polite"></span>
             </article>
 
             <!-- <hr> -->
@@ -64,8 +69,13 @@
                     Source
                 </a>
 
-                <p>Found this useful?</p>
-                <button type="button">Thanks · 0</button>
+                &nbsp;·&nbsp;
+                
+                <!-- <p>Found this useful?</p> -->
+                <button type="button" data-course="em">
+                    Thanks · <span id="em-count">…</span>
+                </button>
+                <span id="em-status" aria-live="polite"></span>
             </article>
 
         </section>
@@ -75,6 +85,90 @@
     <footer>
         <p>A product of ψ Adi Built.</p>
     </footer>
+
+    <script>
+        const API = "https://wce-notes-api.123aditya-upadhyay123.workers.dev";
+
+        // Generate a persistent random ID for this browser.
+        let visitorId = localStorage.getItem("wce-notes-visitor-id");
+
+        if (!visitorId) {
+            visitorId = crypto.randomUUID();
+            localStorage.setItem("wce-notes-visitor-id", visitorId);
+        }
+
+        // Load the current counts.
+        async function loadCounts() {
+            try {
+                const response = await fetch(`${API}/thanks`);
+
+                if (!response.ok) {
+                    throw new Error("Could not load counts");
+                }
+
+                const counts = await response.json();
+
+                counts.forEach(course => {
+                    const element = document.getElementById(
+                        `${course.course_id}-count`
+                    );
+
+                    if (element) {
+                        element.textContent = course.count;
+                    }
+                });
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        // Submit a Thanks vote.
+        async function submitThanks(courseId, button) {
+            const status = document.getElementById(`${courseId}-status`);
+            button.disabled = true;
+            status.textContent = "Submitting…";
+
+            try {
+                const response = await fetch(`${API}/thanks/${courseId}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        visitor_id: visitorId
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Could not submit Thanks");
+                }
+
+                const result = await response.json();
+
+                document.getElementById(`${courseId}-count`).textContent =
+                    result.count;
+
+                status.textContent = result.recorded
+                    ? "Thanks recorded!"
+                    : "You've already left a Thanks!";
+
+            } catch (error) {
+                console.error(error);
+                status.textContent = "Something went wrong. Try again.";
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        // Connect both buttons.
+        document.querySelectorAll("[data-course]").forEach(button => {
+            button.addEventListener("click", () => {
+                submitThanks(button.dataset.course, button);
+            });
+        });
+
+        loadCounts();
+    </script>
 
 </body>
 </html>
